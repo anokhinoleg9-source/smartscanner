@@ -319,7 +319,9 @@
     let cameraActive = false;
 
     async function initCamera() {
-        if (stream) stream.getTracks().forEach(t => t.stop());
+        if (stream) {
+            stream.getTracks().forEach(t => t.stop());
+        }
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             cameraActive = false;
             video.style.display = 'none';
@@ -374,7 +376,7 @@
             fallbackInput.click();
             return;
         }
-        const maxW = 960;
+        const maxW = 720;
         let w = video.videoWidth;
         let h = video.videoHeight;
         if (w > maxW) {
@@ -388,7 +390,7 @@
         video.style.display = 'none';
         canvas.style.display = 'block';
 
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
         processCover(dataUrl);
     });
 
@@ -399,7 +401,7 @@
         reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
-                const maxW = 960;
+                const maxW = 720;
                 let w = img.width;
                 let h = img.height;
                 if (w > maxW) {
@@ -413,7 +415,7 @@
                 fallbackMsg.style.display = 'none';
                 canvas.style.display = 'block';
 
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
                 processCover(dataUrl);
             };
             img.src = e.target.result;
@@ -423,13 +425,20 @@
 
     const PROMPT = "Ты эксперт по школьным учебникам и справочникам. Определи книгу по фото обложки (даже если текста нет или он закрыт — узнай по иллюстрации, дизайну серии и цветовой гамме). Напиши ТОЛЬКО предмет, класс и автора (например: Литература 11 класс Зинин Чалмаев). Никаких кавычек и лишних слов.";
 
-    // Движок 1: Мультимодальный Vision ИИ через открытый шлюз (работает в РФ без VPN и без ключей)
+    function cleanAiOutput(raw) {
+        if (!raw) return null;
+        const firstLine = raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean)[0] || "";
+        const cleaned = firstLine.replace(/["'*`#]/g, "").trim();
+        return cleaned.length >= 3 ? cleaned.slice(0, 85) : null;
+    }
+
+    // Движок 1: Мультимодальный Vision ИИ (работает в РФ без VPN и без ключей)
     async function recognizeViaPollinationsVision(dataUrl) {
         const models = ["openai", "mistral", "openai-large"];
         for (const m of models) {
             try {
                 const ctrl = new AbortController();
-                const timer = setTimeout(() => ctrl.abort(), 7500);
+                const timer = setTimeout(() => ctrl.abort(), 8000);
                 const res = await fetch("https://text.pollinations.ai/openai", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -449,43 +458,42 @@
                 clearTimeout(timer);
                 if (!res.ok) continue;
                 const data = await res.json();
-                const txt = data.choices?.[0]?.message?.content?.trim();
-                if (txt && txt.length >= 3) {
-                    return txt.split('\n')[0].replace(/["'*`#]/g, '').slice(0, 85);
-                }
+                const txt = cleanAiOutput(data.choices?.[0]?.message?.content);
+                if (txt) return txt;
             } catch (_) {}
         }
         return null;
     }
 
-    // Движок 2: Резервный вызов актуальной модели Gemini 3.8 Flash
+    // Движок 2: Резервный вызов Gemini 3.8 Flash
     async function recognizeViaGemini38(dataUrl) {
-        try {
-            const base64Data = dataUrl.split(',')[1];
-            const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), 6000);
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(GEMINI_KEY)}`;
-            const res = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                signal: ctrl.signal,
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: PROMPT },
-                            { inline_data: { mime_type: "image/jpeg", data: base64Data } }
-                        ]
-                    }]
-                })
-            });
-            clearTimeout(timer);
-            if (!res.ok) return null;
-            const data = await res.json();
-            const txt = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-            if (txt && txt.length >= 3) {
-                return txt.split('\n')[0].replace(/["'*`#]/g, '').slice(0, 85);
-            }
-        } catch (_) {}
+        const base64Data = dataUrl.split(',')[1];
+        const models = ["gemini-3.8-flash", "gemini-3.0-flash"];
+        for (const m of models) {
+            try {
+                const ctrl = new AbortController();
+                const timer = setTimeout(() => ctrl.abort(), 6000);
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(GEMINI_KEY)}`;
+                const res = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    signal: ctrl.signal,
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: PROMPT },
+                                { inline_data: { mime_type: "image/jpeg", data: base64Data } }
+                            ]
+                        }]
+                    })
+                });
+                clearTimeout(timer);
+                if (!res.ok) continue;
+                const data = await res.json();
+                const txt = cleanAiOutput(data.candidates?.[0]?.content?.parts?.[0]?.text);
+                if (txt) return txt;
+            } catch (_) {}
+        }
         return null;
     }
 
@@ -520,7 +528,7 @@
         statusTitle.innerText = "✅ " + bookTitle;
         statusDesc.innerText = "Открываем готовый сайт со справочным материалом...";
 
-        // Мгновенный редирект сразу на сайт с учебником (минуя поисковую выдачу)
+        // Мгновенный редирект сразу на первый сайт с учебником (минуя поисковую выдачу)
         const targetUrl = `https://duckduckgo.com/?q=${encodeURIComponent("!ducky " + bookTitle + " учебник читать онлайн")}`;
 
         directLinkBtn.href = targetUrl;

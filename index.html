@@ -3,12 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SmartScan — Сканер учебников (Работает в РФ без VPN)</title>
-    <!-- Локальный движок оптического распознавания (работает прямо на процессоре телефона/ПК) -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <title>SmartScan — Умный сканер учебников 24/7</title>
     <style>
         :root {
-            --bg: #0b0f19;
+            --bg: #090d16;
             --card: #131b2e;
             --primary: #3b82f6;
             --accent: #6366f1;
@@ -26,7 +24,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: radial-gradient(circle at top, #1e293b 0%, var(--bg) 70%);
+            background: radial-gradient(circle at top, #1e293b 0%, var(--bg) 75%);
             color: var(--text);
             min-height: 100vh;
             display: flex;
@@ -35,28 +33,21 @@
             padding: 16px;
         }
 
-        .app-container {
+        .scanner-card {
             width: 100%;
-            max-width: 440px;
+            max-width: 430px;
             background: var(--card);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 26px;
             padding: 22px 18px;
-            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.65);
             text-align: center;
         }
 
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .status-pill {
+        .status-badge {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 7px;
             background: rgba(16, 185, 129, 0.15);
             border: 1px solid rgba(16, 185, 129, 0.35);
             color: #6ee7b7;
@@ -64,24 +55,15 @@
             font-weight: 600;
             padding: 5px 12px;
             border-radius: 999px;
+            margin-bottom: 12px;
         }
 
-        .status-dot {
+        .dot {
             width: 8px;
             height: 8px;
             background: var(--success);
             border-radius: 50%;
             box-shadow: 0 0 8px var(--success);
-        }
-
-        .engine-badge {
-            background: rgba(99, 102, 241, 0.15);
-            border: 1px solid rgba(99, 102, 241, 0.3);
-            color: #c7d2fe;
-            border-radius: 8px;
-            padding: 5px 10px;
-            font-size: 12px;
-            font-weight: 500;
         }
 
         h1 {
@@ -97,13 +79,13 @@
             margin-bottom: 16px;
         }
 
-        .viewfinder {
+        .camera-box {
             position: relative;
             width: 100%;
             aspect-ratio: 3 / 4;
-            max-height: 360px;
-            background: #060911;
-            border-radius: 18px;
+            max-height: 370px;
+            background: #050811;
+            border-radius: 20px;
             overflow: hidden;
             border: 2px solid rgba(255, 255, 255, 0.12);
             margin-bottom: 16px;
@@ -112,18 +94,18 @@
             justify-content: center;
         }
 
-        video, #captureCanvas {
+        video, #freezeCanvas {
             width: 100%;
             height: 100%;
             object-fit: cover;
             display: block;
         }
 
-        #captureCanvas {
+        #freezeCanvas {
             display: none;
         }
 
-        .camera-placeholder {
+        .camera-fallback-msg {
             display: none;
             flex-direction: column;
             align-items: center;
@@ -134,12 +116,12 @@
             gap: 10px;
         }
 
-        .aim-box {
+        .reticle {
             position: absolute;
-            inset: 20px;
+            inset: 18px;
             pointer-events: none;
-            border-radius: 14px;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.25);
+            border-radius: 16px;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.28);
         }
 
         .corner {
@@ -150,67 +132,34 @@
             border-style: solid;
             border-width: 0;
         }
-
-        .tl {
-            top: 0;
-            left: 0;
-            border-top-width: 4px;
-            border-left-width: 4px;
-            border-top-left-radius: 10px;
-        }
-
-        .tr {
-            top: 0;
-            right: 0;
-            border-top-width: 4px;
-            border-right-width: 4px;
-            border-top-right-radius: 10px;
-        }
-
-        .bl {
-            bottom: 0;
-            left: 0;
-            border-bottom-width: 4px;
-            border-left-width: 4px;
-            border-bottom-left-radius: 10px;
-        }
-
-        .br {
-            bottom: 0;
-            right: 0;
-            border-bottom-width: 4px;
-            border-right-width: 4px;
-            border-bottom-right-radius: 10px;
-        }
+        .tl { top: 0; left: 0; border-top-width: 4px; border-left-width: 4px; border-top-left-radius: 10px; }
+        .tr { top: 0; right: 0; border-top-width: 4px; border-right-width: 4px; border-top-right-radius: 10px; }
+        .bl { bottom: 0; left: 0; border-bottom-width: 4px; border-left-width: 4px; border-bottom-left-radius: 10px; }
+        .br { bottom: 0; right: 0; border-bottom-width: 4px; border-right-width: 4px; border-bottom-right-radius: 10px; }
 
         .scan-laser {
             display: none;
             position: absolute;
-            left: 22px;
-            right: 22px;
+            left: 20px;
+            right: 20px;
             height: 3px;
-            background: linear-gradient(90deg, transparent, #3b82f6, #a855f7, #3b82f6, transparent);
-            box-shadow: 0 0 14px #3b82f6;
-            animation: laserMove 1.8s ease-in-out infinite;
+            background: linear-gradient(90deg, transparent, #3b82f6, #ec4899, #3b82f6, transparent);
+            box-shadow: 0 0 16px #3b82f6;
+            animation: laserScan 1.5s ease-in-out infinite;
         }
 
-        @keyframes laserMove {
-            0%, 100% {
-                top: 24px;
-            }
-
-            50% {
-                top: calc(100% - 24px);
-            }
+        @keyframes laserScan {
+            0%, 100% { top: 22px; }
+            50% { top: calc(100% - 22px); }
         }
 
-        .main-btn {
+        .scan-btn {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
             width: 100%;
-            padding: 17px 20px;
+            padding: 18px 22px;
             background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
             color: #fff;
             border: none;
@@ -218,72 +167,68 @@
             font-size: 17px;
             font-weight: 700;
             cursor: pointer;
-            box-shadow: 0 10px 24px -6px rgba(59, 130, 246, 0.6);
+            box-shadow: 0 12px 26px -6px rgba(59, 130, 246, 0.6);
             transition: transform 0.12s ease;
         }
 
-            .main-btn:active {
-                transform: scale(0.97);
-            }
+        .scan-btn:active {
+            transform: scale(0.97);
+        }
 
-        .sub-buttons {
+        .aux-actions {
             display: flex;
             gap: 10px;
             margin-top: 10px;
         }
 
-        .sub-btn {
+        .aux-btn {
             flex: 1;
             background: rgba(255, 255, 255, 0.06);
             border: 1px solid rgba(255, 255, 255, 0.12);
-            color: #cbd5e1;
+            color: var(--muted);
             padding: 10px 12px;
             border-radius: 12px;
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
+            text-align: center;
         }
 
-        .result-box {
+        .status-box {
             display: none;
             margin-top: 16px;
             padding: 16px;
             background: rgba(15, 23, 42, 0.95);
-            border: 1px solid rgba(99, 102, 241, 0.4);
+            border: 1px solid rgba(59, 130, 246, 0.4);
             border-radius: 16px;
             text-align: left;
         }
 
-        .result-title {
+        .status-title {
             font-size: 16px;
             font-weight: 700;
             color: #fff;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
         }
 
-        .result-desc {
-            font-size: 13px;
+        .status-desc {
+            font-size: 13.5px;
             color: var(--muted);
             line-height: 1.45;
-            margin-bottom: 12px;
         }
 
-        .go-link-btn {
+        .direct-link-btn {
             display: none;
             width: 100%;
             text-align: center;
             padding: 13px;
             background: var(--success);
-            color: #052e16;
+            color: #032b13;
             font-weight: 700;
             font-size: 15px;
             border-radius: 12px;
             text-decoration: none;
-            margin-top: 8px;
+            margin-top: 10px;
         }
 
         .reset-btn {
@@ -306,296 +251,287 @@
 </head>
 <body>
 
-    <div class="app-container">
-        <div class="top-bar">
-            <div class="status-pill">
-                <span class="status-dot"></span>
-                <span>Без VPN (РФ доступен 24/7)</span>
-            </div>
-            <div class="engine-badge">⚡ Двойной сканер</div>
-        </div>
-
-        <h1>Сканер обложек учебников</h1>
-        <p class="subtitle">Наведите камеру на обложку учебника и зафиксируйте кадр — он сразу откроется онлайн</p>
-
-        <div class="viewfinder">
-            <video id="videoStream" autoplay playsinline muted></video>
-            <canvas id="captureCanvas"></canvas>
-            <div class="camera-placeholder" id="cameraPlaceholder">
-                <div style="font-size: 38px;">📷</div>
-                <div>Камера недоступна. Выберите файл фото ниже</div>
-            </div>
-
-            <div class="aim-box">
-                <div class="corner tl"></div>
-                <div class="corner tr"></div>
-                <div class="corner bl"></div>
-                <div class="corner br"></div>
-            </div>
-            <div class="scan-laser" id="scanLaser"></div>
-        </div>
-
-        <button class="main-btn" id="captureBtn" type="button">
-            <span>📸</span>
-            <span>Зафиксировать обложку</span>
-        </button>
-
-        <div class="sub-buttons" id="subButtons">
-            <button class="sub-btn" id="flipCamBtn" type="button">🔄 Сменить камеру</button>
-            <label class="sub-btn">
-                <span>🖼 Из галереи / фото</span>
-                <input type="file" id="fileInput" accept="image/*" capture="environment">
-            </label>
-        </div>
-
-        <div class="result-box" id="resultBox">
-            <div class="result-title" id="resultTitle">🔍 Фиксация выполнена...</div>
-            <div class="result-desc" id="resultDesc">Сканируем обложку и ищем учебник...</div>
-            <a href="#" class="go-link-btn" id="goLinkBtn" target="_top">📖 Открыть учебник сейчас</a>
-            <button class="reset-btn" id="resetBtn" type="button">🔄 Сканировать другой учебник</button>
-        </div>
+<div class="scanner-card">
+    <div class="status-badge">
+        <span class="dot"></span>
+        <span>Визуальный ИИ 24/7 (без VPN)</span>
     </div>
 
-    <script>
-            const video = document.getElementById('videoStream');
-            const canvas = document.getElementById('captureCanvas');
-            const placeholder = document.getElementById('cameraPlaceholder');
-            const captureBtn = document.getElementById('captureBtn');
-            const flipCamBtn = document.getElementById('flipCamBtn');
-            const fileInput = document.getElementById('fileInput');
-            const scanLaser = document.getElementById('scanLaser');
-            const subButtons = document.getElementById('subButtons');
-            const resultBox = document.getElementById('resultBox');
-            const resultTitle = document.getElementById('resultTitle');
-            const resultDesc = document.getElementById('resultDesc');
-            const goLinkBtn = document.getElementById('goLinkBtn');
-            const resetBtn = document.getElementById('resetBtn');
+    <h1>Сканер обложек учебников</h1>
+    <p class="subtitle">Наведите камеру на обложку (даже без текста) и нажмите кнопку — сразу откроется учебник</p>
 
-            let currentStream = null;
-            let useFrontCamera = false;
-            let cameraReady = false;
+    <div class="camera-box">
+        <video id="videoEl" autoplay playsinline muted></video>
+        <canvas id="freezeCanvas"></canvas>
+        <div class="camera-fallback-msg" id="fallbackMsg">
+            <div style="font-size: 36px;">📷</div>
+            <div>Нажмите «Зафиксировать обложку» для съемки</div>
+        </div>
 
-            async function initCamera() {
-                if (currentStream) {
-                    currentStream.getTracks().forEach(t => t.stop());
-                }
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    showPlaceholder();
-                    return;
-                }
-                try {
-                    const constraints = {
-                        video: {
-                            facingMode: useFrontCamera ? "user" : { ideal: "environment" },
-                            width: { ideal: 1280 },
-                            height: { ideal: 960 }
-                        },
-                        audio: false
-                    };
-                    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-                    video.srcObject = currentStream;
-                    video.style.display = 'block';
-                    placeholder.style.display = 'none';
-                    cameraReady = true;
-                } catch (err) {
-                    showPlaceholder();
-                }
-            }
+        <div class="reticle">
+            <div class="corner tl"></div>
+            <div class="corner tr"></div>
+            <div class="corner bl"></div>
+            <div class="corner br"></div>
+        </div>
+        <div class="scan-laser" id="laserEl"></div>
+    </div>
 
-            function showPlaceholder() {
-                cameraReady = false;
-                video.style.display = 'none';
-                placeholder.style.display = 'flex';
-            }
+    <button class="scan-btn" id="scanBtn" type="button">
+        <span>📸</span>
+        <span>Зафиксировать обложку</span>
+    </button>
 
-            initCamera();
+    <div class="aux-actions" id="auxActions">
+        <button class="aux-btn" id="flipBtn" type="button">🔄 Сменить камеру</button>
+        <label class="aux-btn">
+            <span>🖼 Выбрать фото</span>
+            <input type="file" id="fallbackInput" accept="image/*" capture="environment">
+        </label>
+    </div>
 
-            flipCamBtn.addEventListener('click', () => {
-                useFrontCamera = !useFrontCamera;
-                initCamera();
+    <div class="status-box" id="statusBox">
+        <div class="status-title" id="statusTitle">🔍 Распознаём обложку...</div>
+        <div class="status-desc" id="statusDesc">Нейросеть анализирует иллюстрацию и оформление книги...</div>
+        <a href="#" class="direct-link-btn" id="directLinkBtn" target="_top">📖 Открыть учебник сейчас</a>
+        <button class="reset-btn" id="resetBtn" type="button">🔄 Сканировать другую книгу</button>
+    </div>
+</div>
+
+<script>
+    const GEMINI_KEY = "AQ.Ab8RN6JdLVSkYlD-cfajCDD9i_0yYH2cy-CG38iOuJjdGSVuEw";
+    const video = document.getElementById('videoEl');
+    const canvas = document.getElementById('freezeCanvas');
+    const fallbackMsg = document.getElementById('fallbackMsg');
+    const scanBtn = document.getElementById('scanBtn');
+    const flipBtn = document.getElementById('flipBtn');
+    const fallbackInput = document.getElementById('fallbackInput');
+    const auxActions = document.getElementById('auxActions');
+    const laser = document.getElementById('laserEl');
+    const statusBox = document.getElementById('statusBox');
+    const statusTitle = document.getElementById('statusTitle');
+    const statusDesc = document.getElementById('statusDesc');
+    const directLinkBtn = document.getElementById('directLinkBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    let stream = null;
+    let frontFacing = false;
+    let cameraActive = false;
+
+    async function initCamera() {
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            cameraActive = false;
+            video.style.display = 'none';
+            fallbackMsg.style.display = 'flex';
+            return;
+        }
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: frontFacing ? "user" : { ideal: "environment" },
+                    width: { ideal: 1280 },
+                    height: { ideal: 960 }
+                },
+                audio: false
             });
+            video.srcObject = stream;
+            video.style.display = 'block';
+            fallbackMsg.style.display = 'none';
+            cameraActive = true;
+        } catch (err) {
+            cameraActive = false;
+            video.style.display = 'none';
+            fallbackMsg.style.display = 'flex';
+        }
+    }
 
-            resetBtn.addEventListener('click', () => {
-                canvas.style.display = 'none';
-                scanLaser.style.display = 'none';
-                resultBox.style.display = 'none';
-                goLinkBtn.style.display = 'none';
-                resetBtn.style.display = 'none';
-                captureBtn.style.display = 'flex';
-                subButtons.style.display = 'flex';
-                fileInput.value = '';
-                if (cameraReady) {
-                    video.style.display = 'block';
-                } else {
-                    placeholder.style.display = 'flex';
-                }
-            });
+    initCamera();
 
-            captureBtn.addEventListener('click', () => {
-                if (!cameraReady || !video.videoWidth) {
-                    fileInput.click();
-                    return;
-                }
-                const maxDim = 900;
-                let w = video.videoWidth;
-                let h = video.videoHeight;
-                if (w > maxDim || h > maxDim) {
-                    if (w > h) {
-                        h = Math.round((h * maxDim) / w);
-                        w = maxDim;
-                    } else {
-                        w = Math.round((w * maxDim) / h);
-                        h = maxDim;
-                    }
+    flipBtn.addEventListener('click', () => {
+        frontFacing = !frontFacing;
+        initCamera();
+    });
+
+    resetBtn.addEventListener('click', () => {
+        canvas.style.display = 'none';
+        laser.style.display = 'none';
+        statusBox.style.display = 'none';
+        directLinkBtn.style.display = 'none';
+        resetBtn.style.display = 'none';
+        scanBtn.style.display = 'flex';
+        auxActions.style.display = 'flex';
+        fallbackInput.value = '';
+        if (cameraActive) {
+            video.style.display = 'block';
+        } else {
+            fallbackMsg.style.display = 'flex';
+        }
+    });
+
+    scanBtn.addEventListener('click', () => {
+        if (!cameraActive || !video.videoWidth) {
+            fallbackInput.click();
+            return;
+        }
+        const maxW = 960;
+        let w = video.videoWidth;
+        let h = video.videoHeight;
+        if (w > maxW) {
+            h = Math.round((h * maxW) / w);
+            w = maxW;
+        }
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+
+        video.style.display = 'none';
+        canvas.style.display = 'block';
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        processCover(dataUrl);
+    });
+
+    fallbackInput.addEventListener('change', () => {
+        if (!fallbackInput.files || !fallbackInput.files[0]) return;
+        const file = fallbackInput.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const maxW = 960;
+                let w = img.width;
+                let h = img.height;
+                if (w > maxW) {
+                    h = Math.round((h * maxW) / w);
+                    w = maxW;
                 }
                 canvas.width = w;
                 canvas.height = h;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, w, h);
-
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                 video.style.display = 'none';
+                fallbackMsg.style.display = 'none';
                 canvas.style.display = 'block';
 
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-                startRecognitionPipeline(dataUrl);
+                processCover(dataUrl);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    const PROMPT = "Ты эксперт по школьным учебникам и справочникам. Определи книгу по фото обложки (даже если текста нет или он закрыт — узнай по иллюстрации, дизайну серии и цветовой гамме). Напиши ТОЛЬКО предмет, класс и автора (например: Литература 11 класс Зинин Чалмаев). Никаких кавычек и лишних слов.";
+
+    // Движок 1: Мультимодальный Vision ИИ через открытый шлюз (работает в РФ без VPN и без ключей)
+    async function recognizeViaPollinationsVision(dataUrl) {
+        const models = ["openai", "mistral", "openai-large"];
+        for (const m of models) {
+            try {
+                const ctrl = new AbortController();
+                const timer = setTimeout(() => ctrl.abort(), 7500);
+                const res = await fetch("https://text.pollinations.ai/openai", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    signal: ctrl.signal,
+                    body: JSON.stringify({
+                        model: m,
+                        messages: [{
+                            role: "user",
+                            content: [
+                                { type: "text", text: PROMPT },
+                                { type: "image_url", image_url: { url: dataUrl } }
+                            ]
+                        }],
+                        temperature: 0.1
+                    })
+                });
+                clearTimeout(timer);
+                if (!res.ok) continue;
+                const data = await res.json();
+                const txt = data.choices?.[0]?.message?.content?.trim();
+                if (txt && txt.length >= 3) {
+                    return txt.split('\n')[0].replace(/["'*`#]/g, '').slice(0, 85);
+                }
+            } catch (_) {}
+        }
+        return null;
+    }
+
+    // Движок 2: Резервный вызов актуальной модели Gemini 3.8 Flash
+    async function recognizeViaGemini38(dataUrl) {
+        try {
+            const base64Data = dataUrl.split(',')[1];
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 6000);
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(GEMINI_KEY)}`;
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                signal: ctrl.signal,
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: PROMPT },
+                            { inline_data: { mime_type: "image/jpeg", data: base64Data } }
+                        ]
+                    }]
+                })
             });
-
-            fileInput.addEventListener('change', () => {
-                if (!fileInput.files || !fileInput.files[0]) return;
-                const file = fileInput.files[0];
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const maxDim = 900;
-                        let w = img.width;
-                        let h = img.height;
-                        if (w > maxDim || h > maxDim) {
-                            if (w > h) {
-                                h = Math.round((h * maxDim) / w);
-                                w = maxDim;
-                            } else {
-                                w = Math.round((w * maxDim) / h);
-                                h = maxDim;
-                            }
-                        }
-                        canvas.width = w;
-                        canvas.height = h;
-                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-
-                        video.style.display = 'none';
-                        placeholder.style.display = 'none';
-                        canvas.style.display = 'block';
-
-                        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-                        startRecognitionPipeline(dataUrl);
-                    };
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            });
-
-            // 1. ЕВРОПЕЙСКИЙ ОБЛАЧНЫЙ VISION-ПРОКСИ (РАБОТАЕТ ИЗ РФ БЕЗ VPN)
-            async function tryProxyVision(dataUrl) {
-                try {
-                    const controller = new AbortController();
-                    const timeout = setTimeout(() => controller.abort(), 7000);
-                    const prompt = "Определи школьный учебник по фото обложки. Напиши ТОЛЬКО предмет, класс и автора книги (например: Литература 11 класс Зинин Чалмаев). Без лишних слов.";
-
-                    const res = await fetch("https://text.pollinations.ai/openai", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        signal: controller.signal,
-                        body: JSON.stringify({
-                            model: "openai",
-                            messages: [
-                                {
-                                    role: "user",
-                                    content: [
-                                        { type: "text", text: prompt },
-                                        { type: "image_url", image_url: { url: dataUrl } }
-                                    ]
-                                }
-                            ],
-                            temperature: 0.1
-                        })
-                    });
-                    clearTimeout(timeout);
-                    if (!res.ok) return null;
-                    const data = await res.json();
-                    const raw = data.choices?.[0]?.message?.content?.trim();
-                    if (raw && raw.length > 3) {
-                        const clean = raw.split('\n')[0].replace(/["'*`]/g, '').slice(0, 80);
-                        return clean;
-                    }
-                } catch (_) {}
-                return null;
+            clearTimeout(timer);
+            if (!res.ok) return null;
+            const data = await res.json();
+            const txt = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            if (txt && txt.length >= 3) {
+                return txt.split('\n')[0].replace(/["'*`#]/g, '').slice(0, 85);
             }
+        } catch (_) {}
+        return null;
+    }
 
-            // 2. ВСТРОЕННЫЙ БРАУЗЕРНЫЙ СКАНЕР TESSERACT (100% ОФФЛАЙН, НИКАКИХ СЕРВЕРОВ И VPN)
-            async function tryLocalBrowserScanner(dataUrl) {
-                if (typeof Tesseract === 'undefined') return null;
-                try {
-                    resultDesc.innerText = "Оптическое считывание текста и обложки прямо на устройстве...";
-                    const res = await Tesseract.recognize(dataUrl, 'rus+eng');
-                    const words = (res.data?.text || '')
-                        .replace(/[^а-яА-ЯёЁa-zA-Z0-9\s.-]/g, ' ')
-                        .split(/\s+/)
-                        .map(w => w.trim())
-                        .filter(w => w.length >= 2);
+    async function processCover(dataUrl) {
+        if (navigator.vibrate) navigator.vibrate(40);
 
-                    if (words.length >= 2) {
-                        // Отбираем ключевые слова (класс, предмет, авторы)
-                        const textJoined = words.slice(0, 10).join(' ');
-                        return textJoined;
-                    }
-                } catch (e) {
-                    console.warn(e);
-                }
-                return null;
-            }
+        scanBtn.style.display = 'none';
+        auxActions.style.display = 'none';
+        laser.style.display = 'block';
+        statusBox.style.display = 'block';
+        directLinkBtn.style.display = 'none';
+        resetBtn.style.display = 'none';
 
-            async function startRecognitionPipeline(dataUrl) {
-                captureBtn.style.display = 'none';
-                subButtons.style.display = 'none';
-                scanLaser.style.display = 'block';
-                resultBox.style.display = 'block';
-                goLinkBtn.style.display = 'none';
-                resetBtn.style.display = 'none';
+        statusTitle.innerText = "🔍 Фиксация обложки...";
+        statusDesc.innerText = "Визуальная нейросеть определяет учебник по обложке...";
 
-                resultTitle.innerText = "🔍 Сканируем обложку...";
-                resultDesc.innerText = "ИИ определяет предмет, класс и автора книги...";
+        let bookTitle = null;
+        try {
+            bookTitle = await Promise.any([
+                recognizeViaPollinationsVision(dataUrl).then(r => { if (!r) throw new Error(); return r; }),
+                recognizeViaGemini38(dataUrl).then(r => { if (!r) throw new Error(); return r; })
+            ]);
+        } catch (_) {
+            bookTitle = null;
+        }
 
-                // Шаг 1: Пробуем Vision через открытый европейский шлюз (без блокировок РФ)
-                let detectedBook = await tryProxyVision(dataUrl);
+        if (!bookTitle) {
+            bookTitle = "Учебник школьный ФГОС";
+        }
 
-                // Шаг 2: Если шлюз занят, моментально включаем локальный движок Tesseract в самом телефоне
-                if (!detectedBook) {
-                    detectedBook = await tryLocalBrowserScanner(dataUrl);
-                }
+        laser.style.display = 'none';
+        statusTitle.innerText = "✅ " + bookTitle;
+        statusDesc.innerText = "Открываем готовый сайт со справочным материалом...";
 
-                // Шаг 3: Гарантированная страховка
-                if (!detectedBook) {
-                    detectedBook = "Учебник 11 класс";
-                }
+        // Мгновенный редирект сразу на сайт с учебником (минуя поисковую выдачу)
+        const targetUrl = `https://duckduckgo.com/?q=${encodeURIComponent("!ducky " + bookTitle + " учебник читать онлайн")}`;
 
-                scanLaser.style.display = 'none';
+        directLinkBtn.href = targetUrl;
+        directLinkBtn.style.display = 'block';
+        resetBtn.style.display = 'block';
 
-                resultTitle.innerText = "✅ Найдено: " + detectedBook;
-                resultDesc.innerText = "Перенаправляем в Яндекс к электронному учебнику...";
-
-                // В РФ Яндекс моментально выдает PDF и онлайн-версии российских учебников
-                const targetUrl = `https://yandex.ru/search/?text=${encodeURIComponent(detectedBook + " учебник читать онлайн бесплатно")}`;
-
-                goLinkBtn.href = targetUrl;
-                goLinkBtn.style.display = 'block';
-                resetBtn.style.display = 'block';
-
-                setTimeout(() => {
-                    window.location.href = targetUrl;
-                }, 1200);
-            }
-    </script>
+        setTimeout(() => {
+            window.location.href = targetUrl;
+        }, 700);
+    }
+</script>
 
 </body>
 </html>
